@@ -40,7 +40,6 @@ public:
 	/* Process OSC Message */
 	void ProcessReceivedData(TSharedPtr<TArray<uint8>, ESPMode::ThreadSafe> ReceivedData);
 	void InitStaticData(int32 NumBones, FName SubjectName);
-	void ProcessReceivedDataSegment(TSharedPtr<TArray<uint8>, ESPMode::ThreadSafe> ReceivedData);
 	FString ParseString(const uint8* DataPtr, int32& offset, int32 DataSize);
 
 
@@ -131,12 +130,71 @@ private:
 	"index_03_r",   // RightIndexDistal
 	"middle_01_r",  // RightMiddleProximal
 	"middle_02_r",  // RightMiddleIntermediate
-	"middle_03_r",  // RightMiddleDistal
 	"ring_01_r",    // RightRingProximal
 	"ring_02_r",    // RightRingIntermediate
 	"ring_03_r",    // RightRingDistal
 	"pinky_01_r",   // RightLittleProximal
 	"pinky_02_r",   // RightLittleIntermediate
-	"pinky_03_r"    // RightLittleDistal
+	"pinky_03_r",    // RightLittleDistal
+	"middle_03_r",  // RightMiddleDistal
+	"root"
+	};
+
+
+	TArray<FString> SkeletalBoneNamesUnity = { 
+		"Hips",
+		"LeftHip",
+		"LeftKnee",
+		"LeftAnkle",
+		"RightHip",
+		"RightKnee",
+		"RightAnkle",
+		"Chest",
+		"Chest1",
+		"Chest2",
+		"LeftCollar",   
+		"LeftShoulder", 
+		"LeftElbow", 
+		"LeftWrist",    
+		"Neck1",     
+		"Head",         
+		"RightCollar",  
+		"RightShoulder",
+		"RightElbow",   
+		"RightWrist",   
+
+		// Left hand fingers
+		"LeftFinger0",  
+		"LeftFinger01", 
+		"LeftFinger02", 
+		"LeftFinger1",  
+		"LeftFinger11", 
+		"LeftFinger12", 
+		"LeftFinger2",  
+		"LeftFinger21", 
+		"LeftFinger22", 
+		"LeftFinger3",  
+		"LeftFinger31", 
+		"LeftFinger32", 
+		"LeftFinger4",  
+		"LeftFinger41", 
+		"LeftFinger42", 
+
+		// Right hand fingers
+		"RightFinger0",  
+		"RightFinger01", 
+		"RightFinger02", 
+		"RightFinger1",  
+		"RightFinger11", 
+		"RightFinger12", 
+		"RightFinger2",  
+		"RightFinger21", 
+		"RightFinger22", 
+		"RightFinger3",  
+		"RightFinger31", 
+		"RightFinger32", 
+		"RightFinger4",  
+		"RightFinger41", 
+		"RightFinger42"
 	};
 };

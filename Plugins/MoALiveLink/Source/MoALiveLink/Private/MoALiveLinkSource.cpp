@@ -24,6 +24,7 @@ MoALiveLinkSource::MoALiveLinkSource(FIPv4Endpoint Endpoint)
 {
 
 	UE_LOG(LogTemp, Log, TEXT("MoALiveLinkSource created with Endpoint: %s"), *Endpoint.ToString());
+	UE_LOG(LogTemp, Log, TEXT("Rebuil at 9:51"));
 	GlobalTransform.SetNumZeroed(51);
 	// defaults
 	DeviceEndpoint = Endpoint;
@@ -140,7 +141,7 @@ void MoALiveLinkSource::ProcessReceivedData(TSharedPtr<TArray<uint8>, ESPMode::T
 
 	/* Address 추출, /MOA/Stream/Motion/Unreal */
 	FString AddressPattern = ParseString(DataPtr, Offset, DataSize);
-	if (AddressPattern.IsEmpty() || AddressPattern != "/MOA/Steam/Motion/Unreal")
+	if (AddressPattern.IsEmpty() || AddressPattern != "/MOA/Stream/Motion/Unreal/Local")
 	{
 		//UE_LOG(LogTemp, Warning, TEXT("Received empty OSC data"));
 		return;
@@ -215,14 +216,15 @@ void MoALiveLinkSource::ProcessReceivedData(TSharedPtr<TArray<uint8>, ESPMode::T
 	{
 		FVector BonePosition(BoneDatas[boneOffset], BoneDatas[boneOffset + 1], BoneDatas[boneOffset + 2]);
 		FQuat BoneRotation(BoneDatas[boneOffset+3], BoneDatas[boneOffset + 4], BoneDatas[boneOffset + 5], BoneDatas[boneOffset + 6]);
-
+		//FQuat ConvertedQuat(IncomingQuat.W, IncomingQuat.X, IncomingQuat.Z, -IncomingQuat.Y);
+		//BoneRotation.Normalize();
 		FTransform LocalTransform(BoneRotation, BonePosition, FVector(1.0f));
 		FrameData.Transforms[i] = LocalTransform;
 		boneOffset += 7;
 	}
 
-	FrameData.Transforms.Add(FTransform(FQuat::Identity, FVector::ZeroVector, FVector(1.0f)));
-
+	//FrameData.Transforms.Add(FTransform(FQuat::Identity, FVector::ZeroVector, FVector(1.0f)));
+	
 	/* Push Subject Data */
 	Client->PushSubjectFrameData_AnyThread({ SourceGuid, SubjectName }, MoveTemp(FrameDataStruct));
 }
@@ -232,77 +234,89 @@ void MoALiveLinkSource::InitStaticData(int32 NumBones, FName SubjectName)
 	FLiveLinkStaticDataStruct StaticDataStruct = FLiveLinkStaticDataStruct(FLiveLinkSkeletonStaticData::StaticStruct());
 	FLiveLinkSkeletonStaticData& StaticData = *StaticDataStruct.Cast<FLiveLinkSkeletonStaticData>();
 
-	StaticData.BoneNames.SetNumUninitialized(NumBones + 1); //51개
-	StaticData.BoneParents.SetNumUninitialized(NumBones + 1); // root bone 포함
+	StaticData.BoneNames.SetNumUninitialized(NumBones); //51개
+	StaticData.BoneParents.SetNumUninitialized(NumBones); // root bone 포함
 
 	for (int id = 0; id < NumBones; id++) // pelvis~hand_r
 	{
-		FString BoneName = SkeletalBoneNames[id];
+		FString BoneName = SkeletalBoneNamesUnity[id];
 		StaticData.BoneNames[id] = FName(BoneName);
 		StaticData.BoneParents[id] = -1;
 	}
-	StaticData.BoneNames[50] = FName("root");
-	StaticData.BoneParents[50] = -1;
 
-	//StaticData.BoneParents[0] = 50;   // pelvis -> root
-	//StaticData.BoneParents[1] = 0;   // thigh_l -> pelvis
-	//StaticData.BoneParents[2] = 1;   // calf_l -> thigh
-	//StaticData.BoneParents[3] = 2;   // foot_l -> calf
+	// 상체
+	StaticData.BoneParents[0] = -1;   // pelvis -> root
+	StaticData.BoneParents[7] = 0;    // spine_01 -> pelvis
+	StaticData.BoneParents[8] = 7;    // spine_02 -> spine_01
+	StaticData.BoneParents[9] = 8;    // spine_03 -> spine_02
+	StaticData.BoneParents[14] = 9;   // neck_01 -> spine_03
+	StaticData.BoneParents[15] = 14;  // head -> neck_01
 
-	//StaticData.BoneParents[4] = 0;  // thigh_r -> pelvis
-	//StaticData.BoneParents[5] = 4;  // calf_r -> thigh
-	//StaticData.BoneParents[6] = 5;  // foot -> calf
+	// 왼쪽 다리
+	StaticData.BoneParents[1] = 0;    // thigh_l -> pelvis
+	StaticData.BoneParents[2] = 1;    // calf_l -> thigh_l
+	StaticData.BoneParents[3] = 2;    // foot_l -> calf_l
 
-	//StaticData.BoneParents[7] = 0; // spine 01 -> pelvis
-	//StaticData.BoneParents[8] = 7;  // spine 02 -> spine 01
-	//StaticData.BoneParents[9] = 8; // spine 03 -> spine 02 
+	// 오른쪽 다리
+	StaticData.BoneParents[4] = 0;    // thigh_r -> pelvis
+	StaticData.BoneParents[5] = 4;    // calf_r -> thigh_r
+	StaticData.BoneParents[6] = 5;    // foot_r -> calf_r
 
-	//StaticData.BoneParents[10] = 9; // clavicle -> spine 03
-	//StaticData.BoneParents[11] = 10; // upperarm l -> clavicle
-	//StaticData.BoneParents[12] = 11; // lowerarm l -> upperarm
-	//StaticData.BoneParents[13] = 12;  // hand l-> lowerarm
+	// 왼쪽 팔
+	StaticData.BoneParents[10] = 9;   // clavicle_l -> spine_03
+	StaticData.BoneParents[11] = 10;  // upperarm_l -> clavicle_l
+	StaticData.BoneParents[12] = 11;  // lowerarm_l -> upperarm_l
+	StaticData.BoneParents[13] = 12;  // hand_l -> lowerarm_l
 
-	//StaticData.BoneParents[14] = 9; // neck -> spine03
-	//StaticData.BoneParents[15] = 14;  // head -> neck
+	// 오른쪽 팔
+	StaticData.BoneParents[16] = 9;   // clavicle_r -> spine_03
+	StaticData.BoneParents[17] = 16;  // upperarm_r -> clavicle_r
+	StaticData.BoneParents[18] = 17;  // lowerarm_r -> upperarm_r
+	StaticData.BoneParents[19] = 18;  // hand_r -> lowerarm_r
 
-	//StaticData.BoneParents[16] = 9; // clavicle r ->  spine03
-	//StaticData.BoneParents[17] = 16; // rightupper -> clavicle 
-	//StaticData.BoneParents[18] = 17; // right lowerarm -> right upper
-	//StaticData.BoneParents[19] = 18; // hand r
+	// 왼손 손가락
+	StaticData.BoneParents[20] = 13;  // thumb_01_l -> hand_l
+	StaticData.BoneParents[21] = 20;  // thumb_02_l -> thumb_01_l
+	StaticData.BoneParents[22] = 21;  // thumb_03_l -> thumb_02_l
 
-	//StaticData.BoneParents[20] = 13;
-	//StaticData.BoneParents[21] = 20;
-	//StaticData.BoneParents[22] = 21;
-	//StaticData.BoneParents[23] = 13;
-	//StaticData.BoneParents[24] = 23;
-	//StaticData.BoneParents[25] = 24;
-	//StaticData.BoneParents[26] = 13;
-	//StaticData.BoneParents[27] = 26;
-	//StaticData.BoneParents[28] = 27;
-	//StaticData.BoneParents[29] = 13;
-	//StaticData.BoneParents[30] = 29;
-	//StaticData.BoneParents[31] = 30;
-	//StaticData.BoneParents[32] = 13;
-	//StaticData.BoneParents[33] = 32;
-	//StaticData.BoneParents[34] = 33;
+	StaticData.BoneParents[23] = 13;  // index_01_l -> hand_l
+	StaticData.BoneParents[24] = 23;  // index_02_l -> index_01_l
+	StaticData.BoneParents[25] = 24;  // index_03_l -> index_02_l
 
-	//StaticData.BoneParents[35] = 18;
-	//StaticData.BoneParents[36] = 34;
-	//StaticData.BoneParents[37] = 35;
-	//StaticData.BoneParents[38] = 18;
-	//StaticData.BoneParents[39] = 38;
-	//StaticData.BoneParents[40] = 39;
-	//StaticData.BoneParents[41] = 19;
-	//StaticData.BoneParents[42] = 41;
-	//StaticData.BoneParents[43] = 42;
-	//StaticData.BoneParents[44] = 19;
-	//StaticData.BoneParents[45] = 44;
-	//StaticData.BoneParents[46] = 45;
-	//StaticData.BoneParents[47] = 19;
-	//StaticData.BoneParents[48] = 47;
-	//StaticData.BoneParents[49] = 48;
+	StaticData.BoneParents[26] = 13;  // middle_01_l -> hand_l
+	StaticData.BoneParents[27] = 26;  // middle_02_l -> middle_01_l
+	StaticData.BoneParents[28] = 27;  // middle_03_l -> middle_02_l
 
-	//BoneParents = StaticData.BoneParents;
+	StaticData.BoneParents[29] = 13;  // ring_01_l -> hand_l
+	StaticData.BoneParents[30] = 29;  // ring_02_l -> ring_01_l
+	StaticData.BoneParents[31] = 30;  // ring_03_l -> ring_02_l
+
+	StaticData.BoneParents[32] = 13;  // pinky_01_l -> hand_l
+	StaticData.BoneParents[33] = 32;  // pinky_02_l -> pinky_01_l
+	StaticData.BoneParents[34] = 33;  // pinky_03_l -> pinky_02_l
+
+	// 오른손 손가락
+	StaticData.BoneParents[35] = 19;  // thumb_01_r -> hand_rthis
+	StaticData.BoneParents[36] = 35;  // thumb_02_r -> thumb_01_r
+	StaticData.BoneParents[37] = 36;  // thumb_03_r -> thumb_02_r
+
+	StaticData.BoneParents[38] = 19;  // index_01_r -> hand_r
+	StaticData.BoneParents[39] = 38;  // index_02_r -> index_01_r
+	StaticData.BoneParents[40] = 39;  // index_03_r -> index_02_r
+
+	StaticData.BoneParents[41] = 19;  // middle_01_r -> hand_r
+	StaticData.BoneParents[42] = 41;  // middle_02_r -> middle_01_r
+	StaticData.BoneParents[43] = 42;  // middle_03_r -> middle_02_r
+
+	StaticData.BoneParents[44] = 19;  // ring_01_r -> hand_r
+	StaticData.BoneParents[45] = 44;  // ring_02_r -> ring_01_r
+	StaticData.BoneParents[46] = 45;  // ring_03_r -> ring_02_r
+
+	StaticData.BoneParents[47] = 19;  // pinky_01_r -> hand_r
+	StaticData.BoneParents[48] = 47;  // pinky_02_r -> pinky_01_r
+	StaticData.BoneParents[49] = 48;  // pinky_03_r -> pinky_02_r
+
+	BoneParents = StaticData.BoneParents;
 
 	/* Push Subject Data(Static) */
 	Client->PushSubjectStaticData_AnyThread({ SourceGuid, SubjectName }, ULiveLinkAnimationRole::StaticClass(), MoveTemp(StaticDataStruct));
