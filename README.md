@@ -48,10 +48,3 @@ YourProject/Plugins/MoALiveLink
 - Animation Blueprint 컴파일
 
 ---
-
-## 📄 **License**
-플러그인 내 일부 코드 및 기능은 **Unreal Engine의 오픈소스 코드(Epic Games)** 를 포함하고 있으며,  
-  이는 **Unreal Engine EULA** 및 해당 라이선스 조항에 따라 사용되어야 합니다.  
-
----
-🚀 제작자: seunghye Hwang
